@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyLink - Flight Booking Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .seat { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; position: relative; }
+        .seat.available { background-color: #e2e8f0; color: #64748b; border: 1px solid #cbd5e1; }
+        .seat.available:hover { background-color: #bfdbfe; border-color: #3b82f6; color: #1d4ed8; }
+        .seat.selected { background-color: #2563eb; color: white; border-color: #1d4ed8; transform: scale(1.1); box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3); z-index: 10; }
+        .seat.occupied { background-color: #f1f5f9; color: #cbd5e1; cursor: not-allowed; border: 1px solid #e2e8f0; }
+        .aisle { width: 30px; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-gray-800 flex flex-col min-h-screen" onclick="app.closeMenus(event)">
+
+    <nav class="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center cursor-pointer" onclick="app.reset()">
+                    <div class="bg-blue-600 text-white p-2 rounded-lg mr-2"><i class="fa-solid fa-plane-up"></i></div>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">SkyLink</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="app.showMyBookings()" class="hidden md:block text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium">My Trips</button>
+                    <div id="auth-section" class="flex items-center space-x-2 pl-2 border-l border-gray-200 ml-2"></div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div id="app-container" class="flex-grow pb-20">
+        <!-- LOGIN -->
+        <div id="view-login" class="hidden max-w-md mx-auto mt-16 px-4 animate-slide-up">
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                <h2 class="text-2xl font-bold text-center mb-8">Welcome Back</h2>
+                <form onsubmit="app.handleLogin(event)">
+                    <input type="email" id="login-email" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Email" required>
+                    <input type="password" id="login-password" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Password" required>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition">Sign In</button>
+                </form>
+                <p class="text-center text-sm text-gray-500 mt-6">New? <a href="#" onclick="app.showRegister()" class="text-blue-600 font-semibold">Create Account</a></p>
+            </div>
+        </div>
+        <!-- REGISTER -->
+        <div id="view-register" class="hidden max-w-md mx-auto mt-16 px-4 animate-slide-up">
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                <h2 class="text-2xl font-bold text-center mb-8">Create Account</h2>
+                <form onsubmit="app.handleRegister(event)">
+                    <input type="text" id="reg-name" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4" placeholder="Full Name" required>
+                    <input type="email" id="reg-email" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4" placeholder="Email" required>
+                    <input type="password" id="reg-password" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-4" placeholder="Password" required>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition">Sign Up</button>
+                </form>
+                <p class="text-center text-sm text-gray-500 mt-6">Has account? <a href="#" onclick="app.showLogin()" class="text-blue-600 font-semibold">Log In</a></p>
+            </div>
+        </div>
+        <!-- SEARCH -->
+        <div id="view-search" class="animate-slide-up">
+            <div class="relative bg-slate-900 h-[500px] w-full flex flex-col items-center justify-center text-white overflow-hidden rounded-b-[3rem]">
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-900 via-slate-900 to-black opacity-90"></div>
+                <div class="relative z-10 text-center px-4 mb-24">
+                    <span class="bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-4 inline-block">Flight Simulator</span>
+                    <h1 class="text-4xl md:text-6xl font-bold mb-4 tracking-tight">Explore the World</h1>
+                </div>
+            </div>
+            <div class="max-w-6xl mx-auto px-4 -mt-32 relative z-20">
+                <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-6 md:p-8 border border-white/20">
+                    <form id="search-form" onsubmit="app.handleSearch(event)">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm"><label class="block text-xs font-bold text-gray-400 uppercase mb-1">From</label><input type="text" id="input-from" class="w-full outline-none font-semibold text-gray-800" value="Mumbai (BOM)"></div>
+                            <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm"><label class="block text-xs font-bold text-gray-400 uppercase mb-1">To</label><input type="text" id="input-to" class="w-full outline-none font-semibold text-gray-800" value="Delhi (DEL)"></div>
+                            <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm"><label class="block text-xs font-bold text-gray-400 uppercase mb-1">Date</label><input type="date" id="input-date" class="w-full outline-none font-semibold text-gray-800"></div>
+                            <div class="relative">
+                                <div id="passenger-trigger" onclick="app.togglePassengerMenu(event)" class="bg-white h-full p-3 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between cursor-pointer"><div class="flex-col flex"><label class="block text-xs font-bold text-gray-400 uppercase mb-1">Travelers</label><span id="passenger-display" class="font-semibold text-gray-800 text-sm">1 Adult</span></div><i class="fa-solid fa-chevron-down text-gray-300"></i></div>
+                                <div id="passenger-menu" class="hidden absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 p-4 z-50">
+                                    <div class="flex justify-between items-center mb-4"><div><p class="font-bold">Adults</p></div><div class="flex items-center space-x-3 bg-gray-50 rounded-lg p-1"><button type="button" onclick="app.updatePassengers('adults', -1)" class="w-8 h-8 rounded bg-white font-bold">-</button><span id="count-adults" class="font-bold w-4 text-center">1</span><button type="button" onclick="app.updatePassengers('adults', 1)" class="w-8 h-8 rounded bg-white font-bold">+</button></div></div>
+                                    <div class="flex justify-between items-center mb-6"><div><p class="font-bold">Children</p></div><div class="flex items-center space-x-3 bg-gray-50 rounded-lg p-1"><button type="button" onclick="app.updatePassengers('children', -1)" class="w-8 h-8 rounded bg-white font-bold">-</button><span id="count-children" class="font-bold w-4 text-center">0</span><button type="button" onclick="app.updatePassengers('children', 1)" class="w-8 h-8 rounded bg-white font-bold">+</button></div></div>
+                                    <button type="button" onclick="app.togglePassengerMenu(event)" class="w-full bg-blue-600 text-white text-sm font-bold py-3 rounded-xl">Done</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end"><button type="submit" id="search-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-2xl shadow-lg flex items-center"><span id="search-text">Search Flights</span><div id="search-loader" class="loader ml-3 hidden"></div></button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- RESULTS -->
+        <div id="view-results" class="hidden max-w-7xl mx-auto px-4 py-12 animate-slide-up">
+            <div class="flex justify-between mb-8"><h2 class="text-2xl font-bold">Select Flight</h2><button onclick="app.showSearch()" class="text-blue-600 font-semibold">Change Search</button></div>
+            <div id="flights-container" class="space-y-4"></div>
+        </div>
+        <!-- SEATS -->
+        <div id="view-seats" class="hidden max-w-4xl mx-auto px-4 py-8 animate-slide-up">
+            <div class="flex items-center mb-6"><button onclick="app.showResults()" class="mr-4 text-gray-400 hover:text-gray-800"><i class="fa-solid fa-arrow-left text-xl"></i></button><div><h2 class="text-2xl font-bold">Select Seats</h2><p id="seats-instruction" class="text-sm text-blue-600 font-medium">Please select 1 seat</p></div></div>
+            <div class="flex flex-col md:flex-row gap-8">
+                <div class="flex-1 bg-white rounded-t-[100px] rounded-b-3xl shadow-xl border border-gray-200 p-8 pb-12 relative overflow-hidden"><div class="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-20 bg-gray-100 rounded-full mt-4 flex items-center justify-center"><i class="fa-solid fa-plane-up text-gray-300 text-3xl"></i></div><div class="mt-20 flex justify-center space-x-8 mb-8"><div class="flex items-center space-x-2"><div class="w-4 h-4 rounded bg-gray-200 border border-gray-300"></div><span class="text-xs text-gray-500">Available</span></div><div class="flex items-center space-x-2"><div class="w-4 h-4 rounded bg-blue-600 shadow-md"></div><span class="text-xs text-gray-500">Selected</span></div><div class="flex items-center space-x-2"><div class="w-4 h-4 rounded bg-slate-100 border border-slate-200 opacity-50"></div><span class="text-xs text-gray-500">Occupied</span></div></div><div id="seat-map-grid" class="flex flex-col items-center gap-3"></div></div>
+                <div class="w-full md:w-80"><div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-24"><h3 class="font-bold text-lg mb-4">Your Selection</h3><div id="selected-seats-list" class="flex flex-wrap gap-2 mb-6"><span class="text-sm text-gray-400 italic">No seats selected</span></div><div class="flex justify-between items-center mb-6 pt-2 border-t border-gray-100"><span class="font-bold">Total</span><span class="font-bold text-xl text-blue-600" id="seat-view-total-price">₹0</span></div><button onclick="app.proceedToBooking()" id="confirm-seats-btn" disabled class="w-full bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition">Continue</button></div></div>
+            </div>
+        </div>
+        <!-- BOOKING -->
+        <div id="view-booking" class="hidden max-w-3xl mx-auto px-4 py-8 animate-slide-up">
+            <button onclick="app.showSeats()" class="mb-6 text-gray-500 hover:text-blue-600 font-medium flex items-center"><i class="fa-solid fa-arrow-left mr-2"></i> Back</button>
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200"><div class="bg-gray-50 px-8 py-6 border-b border-gray-200"><h2 class="text-lg font-bold">Review & Pay</h2></div><div class="p-8"><div id="booking-summary" class="bg-blue-50/50 rounded-xl p-6 mb-8 border border-blue-100 dashed"></div><form id="booking-form" onsubmit="app.confirmBooking(event)"><div class="flex items-center justify-between mt-8 pt-6 border-t border-gray-100"><div><p class="text-sm text-gray-500">Total Amount</p><p id="booking-total-price" class="text-3xl font-bold text-gray-900">₹0</p></div><button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-12 rounded-xl shadow-lg transition">Pay Now</button></div></form></div></div>
+        </div>
+        <!-- SUCCESS -->
+        <div id="view-success" class="hidden max-w-xl mx-auto px-4 py-20 text-center animate-slide-up">
+            <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner"><i class="fa-solid fa-check text-5xl text-green-600"></i></div><h1 class="text-3xl font-bold mb-2">Confirmed!</h1><div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-8"><p class="text-xs text-gray-400 uppercase mb-1">Ref</p><p id="booking-ref" class="text-3xl font-mono font-bold text-gray-800">XYZ-123</p></div><button onclick="app.reset()" class="bg-gray-900 text-white font-bold py-3 px-8 rounded-xl">Book Another</button>
+        </div>
+        <!-- MY BOOKINGS -->
+        <div id="view-my-bookings" class="hidden max-w-4xl mx-auto px-4 py-8 animate-slide-up"><div class="flex justify-between mb-8"><h2 class="text-2xl font-bold">My Trips</h2><button onclick="app.reset()"><i class="fa-solid fa-xmark text-xl"></i></button></div><div id="my-bookings-list" class="grid gap-4"></div></div>
+    </div>
+
+    <script>
+        // THIS IS THE KEY CHANGE FOR DEPLOYMENT:
+        // Use relative path '/api'. It works on localhost AND the cloud automatically.
+        const API_URL = '/api';
+
+        const app = {
+            state: { user: JSON.parse(localStorage.getItem('user')) || null, searchResults: [], selectedFlight: null, selectedSeats: [], passengers: { adults: 1, children: 0 } },
+            init: function() { this.updateAuthUI(); const d = document.getElementById('input-date'); if(d) { const t = new Date(); t.setDate(t.getDate()+1); d.valueAsDate = t; }},
+            togglePassengerMenu: function(e) { e.stopPropagation(); document.getElementById('passenger-menu').classList.toggle('hidden'); },
+            closeMenus: function(e) { const m = document.getElementById('passenger-menu'), t = document.getElementById('passenger-trigger'); if (!m.classList.contains('hidden') && !m.contains(e.target) && !t.contains(e.target)) m.classList.add('hidden'); },
+            updatePassengers: function(type, change) {
+                if (type === 'adults') this.state.passengers.adults = Math.max(1, this.state.passengers.adults + change);
+                else this.state.passengers.children = Math.max(0, this.state.passengers.children + change);
+                document.getElementById('count-adults').textContent = this.state.passengers.adults;
+                document.getElementById('count-children').textContent = this.state.passengers.children;
+                const total = this.state.passengers.adults + this.state.passengers.children;
+                document.getElementById('passenger-display').textContent = this.state.passengers.children === 0 ? `${this.state.passengers.adults} Adult${this.state.passengers.adults>1?'s':''}` : `${total} Passenger${total>1?'s':''}`;
+            },
+            switchView: function(id) { document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); window.scrollTo(0,0); },
+            showLogin: function() { this.switchView('view-login'); }, showRegister: function() { this.switchView('view-register'); }, showSearch: function() { this.switchView('view-search'); }, showResults: function() { this.switchView('view-results'); }, showBooking: function() { this.switchView('view-booking'); }, reset: function() { this.showSearch(); },
+            updateAuthUI: function() { const c = document.getElementById('auth-section'); c.innerHTML = this.state.user ? `<div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs border border-blue-200">${this.state.user.name.charAt(0)}</div><button onclick="app.logout()" class="text-xs text-gray-500 hover:text-red-600 font-medium">Log out</button>` : `<button onclick="app.showLogin()" class="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold">Log In</button>`; },
+            handleRegister: async function(e) { e.preventDefault(); const [name, email, pass] = ['reg-name','reg-email','reg-password'].map(id => document.getElementById(id).value); try { const res = await fetch(`${API_URL}/auth/register`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name,email,password:pass})}); const d = await res.json(); d.success ? (alert('Account created!'), this.showLogin()) : alert(d.message); } catch(e) { alert('Server Error'); } },
+            handleLogin: async function(e) { e.preventDefault(); const [email, pass] = ['login-email','login-password'].map(id => document.getElementById(id).value); try { const res = await fetch(`${API_URL}/auth/login`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email,password:pass})}); const d = await res.json(); d.success ? (this.state.user = d.user, localStorage.setItem('user', JSON.stringify(d.user)), this.updateAuthUI(), this.reset()) : alert(d.message); } catch(e) { alert('Server Error'); } },
+            logout: function() { localStorage.removeItem('user'); this.state.user = null; this.updateAuthUI(); this.reset(); },
+            handleSearch: async function(e) { e.preventDefault(); const btn = document.getElementById('search-btn'), l = document.getElementById('search-loader'); btn.disabled = true; l.classList.remove('hidden'); const [from, to, date] = ['input-from','input-to','input-date'].map(id => document.getElementById(id).value); try { const res = await fetch(`${API_URL}/search`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({from,to,date})}); this.state.searchResults = await res.json(); this.renderResults(); this.showResults(); } catch(e) { alert('Server Error'); } finally { btn.disabled = false; l.classList.add('hidden'); } },
+            renderResults: function() { const c = document.getElementById('flights-container'); c.innerHTML = this.state.searchResults.map(f => `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition"><div class="flex flex-col md:flex-row items-center justify-between gap-6"><div class="flex items-center w-full md:w-1/4"><img src="${f.logo}" class="w-12 h-12 object-contain mr-4" onerror="this.src='https://placehold.co/40x40?text=Air'"><div><h4 class="font-bold">${f.airline}</h4><span class="text-xs bg-gray-50 px-2 py-1 rounded border">${f.code}</span></div></div><div class="flex-1 text-center"><div class="text-xl font-bold">${f.depTime}</div><div class="text-xs text-gray-500">${f.from}</div></div><div class="flex-1 text-center"><div class="text-xl font-bold">${f.arrTime}</div><div class="text-xs text-gray-500">${f.to}</div></div><div class="w-full md:w-1/4 text-right"><div class="text-2xl font-bold text-blue-600 mb-2">₹${f.price.toLocaleString()}</div><button onclick="app.showSeats(${f.id})" class="bg-gray-900 text-white font-semibold py-3 px-6 rounded-xl w-full">Select</button></div></div></div>`).join(''); },
+            showSeats: function(flightId) { if(!this.state.user) return (alert('Please log in'), this.showLogin()); if(flightId) this.state.selectedFlight = this.state.searchResults.find(f => f.id === flightId); this.state.selectedSeats = []; const req = this.state.passengers.adults + this.state.passengers.children; document.getElementById('seats-instruction').textContent = `Please select ${req} seat${req>1?'s':''}`; this.renderSeatMap(); this.updateSeatSummary(); this.switchView('view-seats'); },
+            renderSeatMap: function() { const grid = document.getElementById('seat-map-grid'); grid.innerHTML = ''; for(let r=1; r<=10; r++) { const row = document.createElement('div'); row.className = 'flex items-center gap-2'; ['A','B','C','AISLE','D','E','F'].forEach(c => { if(c === 'AISLE') { const a = document.createElement('div'); a.className = 'aisle flex justify-center text-xs text-gray-300 font-mono'; a.textContent = r; row.appendChild(a); } else { const id = `${r}${c}`, occ = Math.random() < 0.3, seat = document.createElement('div'); seat.className = `seat ${occ ? 'occupied' : 'available'}`; seat.textContent = c; if(!occ) seat.onclick = () => this.toggleSeat(id, seat); row.appendChild(seat); } }); grid.appendChild(row); } },
+            toggleSeat: function(id, el) { const max = this.state.passengers.adults + this.state.passengers.children; if(this.state.selectedSeats.includes(id)) { this.state.selectedSeats = this.state.selectedSeats.filter(s => s !== id); el.classList.remove('selected'); } else { if (this.state.selectedSeats.length >= max) return alert(`Select max ${max} seats.`); this.state.selectedSeats.push(id); el.classList.add('selected'); } this.updateSeatSummary(); },
+            updateSeatSummary: function() { const list = document.getElementById('selected-seats-list'), btn = document.getElementById('confirm-seats-btn'), max = this.state.passengers.adults + this.state.passengers.children; list.innerHTML = this.state.selectedSeats.length ? this.state.selectedSeats.map(s => `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm font-bold border border-blue-200">${s}</span>`).join('') : '<span class="text-sm text-gray-400 italic">No seats selected</span>'; btn.disabled = (this.state.selectedSeats.length !== max); btn.textContent = btn.disabled ? `Select ${max - this.state.selectedSeats.length} more` : 'Continue'; const price = this.state.selectedFlight.price, total = price * this.state.selectedSeats.length; document.getElementById('seat-view-total-price').textContent = `₹${total.toLocaleString()}`; },
+            proceedToBooking: function() { this.renderBookingSummary(); this.showBooking(); },
+            renderBookingSummary: function() { const f = this.state.selectedFlight, s = this.state.selectedSeats, t = f.price * s.length; document.getElementById('booking-total-price').textContent = `₹${t.toLocaleString()}`; document.getElementById('booking-summary').innerHTML = `<p><b>${f.airline}</b> (${f.from} -> ${f.to})</p><p class="text-sm mt-2">Seats: ${s.join(', ')}</p>`; },
+            confirmBooking: async function(e) { e.preventDefault(); try { const res = await fetch(`${API_URL}/book`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: this.state.user.id, flight: this.state.selectedFlight, seats: this.state.selectedSeats }) }); const d = await res.json(); d.success ? (document.getElementById('booking-ref').textContent = d.bookingRef, this.switchView('view-success')) : alert('Failed'); } catch(e) { alert('Booking Failed'); } },
+            showMyBookings: async function() { if(!this.state.user) return this.showLogin(); try { const res = await fetch(`${API_URL}/bookings/${this.state.user.id}`); const b = await res.json(); document.getElementById('my-bookings-list').innerHTML = b.map(x => `<div class="bg-white border p-4 rounded shadow-sm"><b>${x.flight.airline}</b><br><span class="text-sm text-gray-500">${x.seats.join(', ')}</span></div>`).join(''); this.switchView('view-my-bookings'); } catch(e) {} }
+        };
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
